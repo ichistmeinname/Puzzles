@@ -83,3 +83,73 @@ allDifferent xs = not (or [ x == y | (x,id1) <- ys, (y,id2) <- ys, id1 /= id2])
 
 allDifferentJobs :: [(Person,Job,Job)] -> Bool
 allDifferentJobs = allDifferent . foldr (\ (_,(Job j1 _),(Job j2 _)) jAll -> j1:j2:jAll) []
+
+
+-- inverse function
+(:~) :: Eq b => (a -> b) -> b -> a
+(:~) f y | f x == y = x where x free
+
+(~.) :: a -> (a -> b) -> b
+(~.) = flip ($)
+
+-- twoJobs :: Person -> (Job,Job)
+twoJobs = each ~. hasJob `ofSize` 2
+
+twoJobs' = eachOf persons ^. hasJob `ofSize` 2
+
+data Iterator a = Next (Iterate a) | Empty
+data Iterate a = It a | I (Iterate (a,a)) a | O (Iterate (a,a))
+
+eachOf :: [a] -> Iterator a
+eachOf = foldr consIt Empty
+ where
+
+consIt :: a -> Iterator a -> Iterator a
+consIt x' xs' = Next (cons x' xs')
+ where
+  cons x Empty         = It x
+  cons x (Next is) = cons' x is
+  cons' :: a -> Iterate a -> Iterate a
+  cons' x (It i)   = O (It (x,i))
+  cons' x (O is)   = I is x
+  cons' x (I is i) = O (cons' (x,i) is)
+
+-- Functor (Iterator a)
+(^.) :: Iterator a -> (a -> b) -> Iterator b
+Empty ^. f = Empty
+Next i ^. f = Next (iMap f i)
+ where
+  iMap :: (a -> b) -> Iterate a -> Iterate b
+  iMap f (It x)  = It (f x)
+  iMap f (I i x) = I (iMap (\ (y,z) -> (f y, f z)) i) (f x)
+  iMap f (O i)   = O (iMap (\ (y,z) -> (f y, f z)) i)
+
+data JobPosition = P Job Job
+
+hasJob :: Person -> Job
+hasJob = unknown
+-- hasJob p | oneof ~. == p = j1
+
+class OneOf a where
+  oneOf :: a -> a
+
+instance OneOf Job where
+  oneOf j@(Job Clerk _) = j
+
+ofSize :: a -> Int -> Bool
+ofSize val size = unknown
+
+class Countable a where
+  ofSize' :: a -> Int
+
+instance Countable (Person -> Job) where
+  ofSize' = unknown
+
+class Eachable a where
+  each :: a
+
+instance Eachable Person where
+  each = pete
+  each = roberta
+  each = thelma
+  each = steve
