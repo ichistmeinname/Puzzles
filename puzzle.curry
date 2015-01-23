@@ -3,6 +3,21 @@
 import SetFunctions
 import List (nub,sortBy)
 
+type Set a = [a]
+
+insert :: Eq a => a -> Set a -> Set a
+insert x ys | x `elem` ys = ys
+            | otherwise   = x:ys
+
+listToSet :: Eq a => [a] -> Set a
+listToSet = foldr insert []
+
+card :: Set a -> Int
+card = length
+
+elemOf :: Eq a => a -> Set a -> Bool
+elemOf = elem
+
 data Person = Person Name Gender
   deriving (Eq,Show)
 data Name = Roberta | Thelma | Steve | Pete
@@ -10,12 +25,61 @@ data Name = Roberta | Thelma | Steve | Pete
 data Gender = Male | Female
   deriving (Eq,Show)
 
-isFemale :: Person -> Bool
-isFemale (Person _ Female) = True
-isFemale (Person _ Male)   = False
+people :: Set Name
+people = listToSet [Roberta,Thelma,Steve,Pete]
 
-isMale :: Person -> Bool
-isMale = not . isFemale
+female :: Set Name
+female = listToSet [Thelma, Roberta]
+
+male :: Set Name
+male = listToSet [Steve,Pete]
+
+jobs :: Set JobName
+jobs = [Actor,Boxer,Chef,Clerk,Guard,Nurse,Police,Teacher]
+
+type Surj a b = a -> b
+
+holdsJobSur :: Surj JobName Name
+holdsJobSur j = y where y free
+ -- map genFuncs jobs
+ -- where
+ --   genFuncs job = let y = unknown
+ --                  in \job -> y 
+
+jobsOf :: Name -> Set JobName
+jobsOf = (holdsJobSur ~~.)
+
+(~~.) :: (Eq a, Eq b) => Surj a b -> b -> Set a
+f ~~. x | allOfSet (\y -> f y == x) ys = ys
+ where
+  allOfSet :: (a -> Bool) -> Set a -> Bool
+  allOfSet f []     = True
+  allOfSet f (x:xs) = f x && allOfSet f xs
+  ys = z `insert` zs
+  y, z, zs free
+       
+husband :: Name -> Name
+husband x | x `elemOf` male && y `elemOf` female = y
+ where y free
+
+qualifiedJobs :: Set JobName
+qualifiedJobs = listToSet [Police,Teacher,Nurse]
+
+golfers :: Set Name
+golfers = listToSet [Roberta, holdsJobSur Chef, holdsJobSur Police]
+
+equation |  holdsJobSur Nurse `elemOf` male
+         && holdsJobSur Actor `elemOf` male
+         && husband (holdsJobSur Chef) == holdsJobSur Clerk
+         && not (Boxer `elemOf` jobsOf Roberta)
+         && not (Pete `elemOf` map holdsJobSur qualifiedJobs)
+         && card golfers == 3
+         && p `elem` people
+         && card (jobsOf p) == 2
+         = map (\p -> (p, jobsOf p)) people
+ where p free
+
+-- cond ((holdsJobSur Nurse `elemOf` male) =:= True && (holdsJobSur Actor `elemOf` male =:= True) && (husband (holdsJobSur Chef) == holdsJobSur Clerk =:= True) && (not (Boxer `elemOf` jobsOf Roberta) =:= True) && (not (Pete `elemOf` map holdsJobSur qualifiedJobs) =:= True) && (card golfers == 3 =:= True) && (p `elem` people =:= True) && (card (jobsOf p) == 2 =:= True)) (map (\p -> (p, jobsOf p)) people) where p free
 
 data Job = Job JobName Gender
   deriving (Eq,Show)
@@ -25,8 +89,8 @@ data JobName = Actor | Boxer | Chef | Clerk | Guard | Nurse | Police | Teacher
 -- property1 :: Job -> Person
 -- property1 (Job _ g) = (Person _ g)
     
-husband :: Person -> Person
-husband (Person _ Female) = (Person _ Male)
+-- husband :: Person -> Person
+-- husband (Person _ Female) = (Person _ Male)
 
 pete, steve, thelma, roberta :: Person
 pete = Person Pete Male
@@ -64,7 +128,7 @@ holdsJob (Job Police g) | not (p == Roberta)     = Person p g where p free
 jobSituationOf :: Person -> (Person,Job,Job)
 jobSituationOf p@(Person name g) |  j1 /= j2 && j1 <= j2
                                  && not (j1 == Chef && j2 == Police)
-				 && not (name == Pete && (isQualifiedJob j1 || isQualifiedJob j2))
+                                 && not (name == Pete && (isQualifiedJob j1 || isQualifiedJob j2))
                                  && holdsJob (Job j1 g) == p
                                  && holdsJob (Job j2 g) == p = (Person name g, Job j1 g, Job j2 g)
    where j1,j2 free
