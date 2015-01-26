@@ -2,6 +2,7 @@
 
 import SetFunctions
 import List (nub,sortBy)
+import Binary
 
 type Set a = [a]
 
@@ -12,8 +13,18 @@ insert x ys | x `elem` ys = ys
 listToSet :: Eq a => [a] -> Set a
 listToSet = foldr insert []
 
-card :: Set a -> Int
-card = length
+card :: Set a -> BinInt
+card = lengthIt . foldr consIt Empty
+
+is :: BinInt -> Int -> Bool
+is x y = x == (intToBinInt y)
+
+intToBinInt n = case n of
+                     0 -> Zero
+                     _ | n > 0 -> Pos (intToBinInt' n)
+intToBinInt' n = case n of
+                      1 -> IHi
+                      _ -> Binary.succ (intToBinInt' (n - 1))
 
 elemOf :: Eq a => a -> Set a -> Bool
 elemOf = elem
@@ -28,11 +39,11 @@ data Gender = Male | Female
 people :: Set Name
 people = listToSet [Roberta,Thelma,Steve,Pete]
 
-female :: Set Name
-female = listToSet [Thelma, Roberta]
+-- female :: Set Name
+-- female = listToSet [Thelma, Roberta]
 
-male :: Set Name
-male = listToSet [Steve,Pete]
+-- male :: Set Name
+-- male = listToSet [Steve,Pete]
 
 jobs :: Set JobName
 jobs = [Actor,Boxer,Chef,Clerk,Guard,Nurse,Police,Teacher]
@@ -45,6 +56,21 @@ holdsJobSur j = y where y free
  -- where
  --   genFuncs job = let y = unknown
  --                  in \job -> y 
+
+equation |  holdsJobSur Nurse `elemOf` male
+         && holdsJobSur Actor `elemOf` male
+         && husband (holdsJobSur Chef) == holdsJobSur Clerk
+         && not (Boxer `elemOf` jobsOf Roberta)
+         && not (Pete `elemOf` map holdsJobSur qualifiedJobs)
+         && card golfers `is` 3
+         = map (\p -> let js = jobsOf p in cond ((card js `is` 2) =:= True) (p, js)) people
+ where
+  female :: Set Name
+  female = listToSet [Thelma, Roberta]
+  male :: Set Name
+  male = listToSet [Steve,Pete]
+  golfers :: Set Name
+  golfers = listToSet [Roberta, holdsJobSur Chef, holdsJobSur Police]
 
 jobsOf :: Name -> Set JobName
 jobsOf = (holdsJobSur ~~.)
@@ -64,22 +90,9 @@ husband x | x `elemOf` male && y `elemOf` female = y
 
 qualifiedJobs :: Set JobName
 qualifiedJobs = listToSet [Police,Teacher,Nurse]
+  p free
 
-golfers :: Set Name
-golfers = listToSet [Roberta, holdsJobSur Chef, holdsJobSur Police]
-
-equation |  holdsJobSur Nurse `elemOf` male
-         && holdsJobSur Actor `elemOf` male
-         && husband (holdsJobSur Chef) == holdsJobSur Clerk
-         && not (Boxer `elemOf` jobsOf Roberta)
-         && not (Pete `elemOf` map holdsJobSur qualifiedJobs)
-         && card golfers == 3
-         && p `elem` people
-         && card (jobsOf p) == 2
-         = map (\p -> (p, jobsOf p)) people
- where p free
-
--- cond ((holdsJobSur Nurse `elemOf` male) =:= True && (holdsJobSur Actor `elemOf` male =:= True) && (husband (holdsJobSur Chef) == holdsJobSur Clerk =:= True) && (not (Boxer `elemOf` jobsOf Roberta) =:= True) && (not (Pete `elemOf` map holdsJobSur qualifiedJobs) =:= True) && (card golfers == 3 =:= True) && (p `elem` people =:= True) && (card (jobsOf p) == 2 =:= True)) (map (\p -> (p, jobsOf p)) people) where p free
+-- cond ((holdsJobSur Nurse `elemOf` male) =:= True & (holdsJobSur Actor `elemOf` male) =:= True & (husband (holdsJobSur Chef) == holdsJobSur Clerk) =:= True & (not (Boxer `elemOf` jobsOf Roberta)) =:= True & (not (Pete `elemOf` map holdsJobSur qualifiedJobs)) =:= True & (card golfers == 3) =:= True) (map (\p -> let js = jobsOf p in cond ((card js == 2) =:= True) (p, js)) people)
 
 data Job = Job JobName Gender
   deriving (Eq,Show)
@@ -162,7 +175,7 @@ twoJobs = each ~. hasJob `ofSize` 2
 twoJobs' = eachOf persons ^. hasJob `ofSize` 2
 
 data Iterator a = Next (Iterate a) | Empty
-data Iterate a = It a | I (Iterate (a,a)) a | O (Iterate (a,a))
+data Iterate a = It a | II (Iterate (a,a)) a | OI (Iterate (a,a))
 
 eachOf :: [a] -> Iterator a
 eachOf = foldr consIt Empty
@@ -174,9 +187,9 @@ consIt x' xs' = Next (cons x' xs')
   cons x Empty         = It x
   cons x (Next is) = cons' x is
   cons' :: a -> Iterate a -> Iterate a
-  cons' x (It i)   = O (It (x,i))
-  cons' x (O is)   = I is x
-  cons' x (I is i) = O (cons' (x,i) is)
+  cons' x (It i)    = OI (It (x,i))
+  cons' x (OI is)   = II is x
+  cons' x (II is i) = OI (cons' (x,i) is)
 
 -- Functor (Iterator a)
 (^.) :: Iterator a -> (a -> b) -> Iterator b
@@ -184,9 +197,18 @@ Empty ^. f = Empty
 Next i ^. f = Next (iMap f i)
  where
   iMap :: (a -> b) -> Iterate a -> Iterate b
-  iMap f (It x)  = It (f x)
-  iMap f (I i x) = I (iMap (\ (y,z) -> (f y, f z)) i) (f x)
-  iMap f (O i)   = O (iMap (\ (y,z) -> (f y, f z)) i)
+  iMap f (It x)   = It (f x)
+  iMap f (II i x) = II (iMap (\ (y,z) -> (f y, f z)) i) (f x)
+  iMap f (OI i)   = OI (iMap (\ (y,z) -> (f y, f z)) i)
+
+lengthIt :: Iterator a -> BinInt
+lengthIt Empty           = Zero
+lengthIt (Next list) = Pos (lengthI list)
+ where
+  lengthI :: Iterate a -> Nat
+  lengthI (It _) = IHi
+  lengthI (OI l)   = O (lengthI l)
+  lengthI (II l _) = I (lengthI l)
 
 data JobPosition = P Job Job
 
