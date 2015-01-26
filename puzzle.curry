@@ -10,6 +10,13 @@ insert :: Eq a => a -> Set a -> Set a
 insert x ys | x `elem` ys = ys
             | otherwise   = x:ys
 
+mapSet :: Eq b => (a -> b) -> Set a -> Set b
+mapSet f []       = []
+mapSet f ys@(_:_) = mapHelp ys []
+ where
+  mapHelp []     xs = xs
+  mapHelp (z:zs) xs = insert (f z) xs
+
 listToSet :: Eq a => [a] -> Set a
 listToSet = foldr insert []
 
@@ -30,11 +37,11 @@ elemOf :: Eq a => a -> Set a -> Bool
 elemOf = elem
 
 data Person = Person Name Gender
-  deriving (Eq,Show)
-data Name = Roberta | Thelma | Steve | Pete
-  deriving (Eq,Show)
+  deriving (Eq,Ord,Show)
+data Name = Pete | Roberta | Steve | Thelma
+  deriving (Eq,Ord,Show)
 data Gender = Male | Female
-  deriving (Eq,Show)
+  deriving (Eq,Ord,Show)
 
 people :: Set Name
 people = listToSet [Roberta,Thelma,Steve,Pete]
@@ -59,9 +66,9 @@ holdsJobSur j = y where y free
 
 equation |  holdsJobSur Nurse `elemOf` male
          && holdsJobSur Actor `elemOf` male
-         && husband (holdsJobSur Chef) == holdsJobSur Clerk
+         && husband (holdsJobSur Chef) male female == holdsJobSur Clerk
          && not (Boxer `elemOf` jobsOf Roberta)
-         && not (Pete `elemOf` map holdsJobSur qualifiedJobs)
+         && not (Pete `elemOf` mapSet holdsJobSur qualifiedJobs)
          && card golfers `is` 3
          = map (\p -> let js = jobsOf p in cond ((card js `is` 2) =:= True) (p, js)) people
  where
@@ -71,7 +78,6 @@ equation |  holdsJobSur Nurse `elemOf` male
   male = listToSet [Steve,Pete]
   golfers :: Set Name
   golfers = listToSet [Roberta, holdsJobSur Chef, holdsJobSur Police]
-
 jobsOf :: Name -> Set JobName
 jobsOf = (holdsJobSur ~~.)
 
@@ -82,20 +88,18 @@ f ~~. x | allOfSet (\y -> f y == x) ys = ys
   allOfSet f []     = True
   allOfSet f (x:xs) = f x && allOfSet f xs
   ys = z `insert` zs
-  y, z, zs free
+  z, zs free
        
-husband :: Name -> Name
-husband x | x `elemOf` male && y `elemOf` female = y
- where y free
+husband :: Name -> Set Name -> Set Name -> Name
+husband x male female | x `elemOf` male && y `elemOf` female = y where y free
 
 qualifiedJobs :: Set JobName
 qualifiedJobs = listToSet [Police,Teacher,Nurse]
-  p free
 
 -- cond ((holdsJobSur Nurse `elemOf` male) =:= True & (holdsJobSur Actor `elemOf` male) =:= True & (husband (holdsJobSur Chef) == holdsJobSur Clerk) =:= True & (not (Boxer `elemOf` jobsOf Roberta)) =:= True & (not (Pete `elemOf` map holdsJobSur qualifiedJobs)) =:= True & (card golfers == 3) =:= True) (map (\p -> let js = jobsOf p in cond ((card js == 2) =:= True) (p, js)) people)
 
 data Job = Job JobName Gender
-  deriving (Eq,Show)
+  deriving (Eq,Ord,Show)
 data JobName = Actor | Boxer | Chef | Clerk | Guard | Nurse | Police | Teacher
   deriving (Eq, Ord, Show)
 
@@ -166,20 +170,14 @@ allDifferentJobs = allDifferent . foldr (\ (_,(Job j1 _),(Job j2 _)) jAll -> j1:
 (:~) :: Eq b => (a -> b) -> b -> a
 (:~) f y | f x == y = x where x free
 
-(~.) :: a -> (a -> b) -> b
-(~.) = flip ($)
+-- (~.) :: [a] -> (a -> b) -> [b]
+-- (~.) = flip ($)
 
--- twoJobs :: Person -> (Job,Job)
-twoJobs = each ~. hasJob `ofSize` 2
-
-twoJobs' = eachOf persons ^. hasJob `ofSize` 2
+(~.~) :: a -> b -> (a,b)
+x ~.~ y = (x,y)
 
 data Iterator a = Next (Iterate a) | Empty
 data Iterate a = It a | II (Iterate (a,a)) a | OI (Iterate (a,a))
-
-eachOf :: [a] -> Iterator a
-eachOf = foldr consIt Empty
- where
 
 consIt :: a -> Iterator a -> Iterator a
 consIt x' xs' = Next (cons x' xs')
@@ -206,36 +204,82 @@ lengthIt Empty           = Zero
 lengthIt (Next list) = Pos (lengthI list)
  where
   lengthI :: Iterate a -> Nat
-  lengthI (It _) = IHi
+  lengthI (It _)   = IHi
   lengthI (OI l)   = O (lengthI l)
   lengthI (II l _) = I (lengthI l)
 
-data JobPosition = P Job Job
+data JobPosition = P Person JobName JobName
 
-hasJob :: Person -> Job
-hasJob = unknown
--- hasJob p | oneof ~. == p = j1
+-- -- twoJobs :: Person -> (Job,Job)
+twoJobs = ((every ~.~ hasJobs `ofSize` 2 |> roberta) jobName (isNot Boxer)
+            |> pete) jobName (\x -> any (isNot x) [Teacher,Nurse,Police])
+ where
+  isNot = (/=)
 
+(|>) :: Eq a => [(a,[b])] -> a -> (b -> c) -> (c -> Bool) -> [(a,[b])]
+(|>) xs filterVal selF condF =
+  filter (\ (x,ys) -> (x == filterVal && any (condF . selF) ys) || x /= filterVal) xs
+
+-- twoJobs' = eachOf persons ^. hasJobs `ofSize` 2
+
+jobName :: Job -> JobName
+jobName (Job name _) = name
+
+class HasGender a where
+  gender :: a -> Gender
+
+instance HasGender Person where
+  gender (Person _ g) = g
+
+instance HasGender Job where
+  gender (Job _ g) = g
+
+hasJobs :: Person -> Job
+hasJobs p | gender p == gender j = j
+ where
+  j = oneOf
+  
 class OneOf a where
-  oneOf :: a -> a
+  oneOf :: a
 
 instance OneOf Job where
-  oneOf j@(Job Clerk _) = j
+  oneOf = case Job each each of
+               Job Actor Female -> failed
+               j                -> j
 
-ofSize :: a -> Int -> Bool
-ofSize val size = unknown
+ofSize' :: Eq b => (a, a -> b) -> Int -> [b]
+ofSize' (x,f) i = case i of
+                       0 -> []
+                       _ -> f x : ofSize' (x,f) (i - 1)
 
-class Countable a where
-  ofSize' :: a -> Int
+ofSize :: Eq b => ([a], a -> b) -> Int -> [(a,[b])]
+ofSize ([]  ,_)     i = []
+ofSize (x:xs,f)     i = (x,ofSize' (x,f) i) : ofSize (xs,f) i
 
-instance Countable (Person -> Job) where
-  ofSize' = unknown
 
-class Eachable a where
+class Ord a => Eachable a where
   each :: a
+  every :: [a]
+  every = sortValues (set0 each)
 
 instance Eachable Person where
   each = pete
   each = roberta
   each = thelma
   each = steve
+
+-- instance Eachable Job where
+
+instance Eachable Gender where
+  each = Female
+  each = Male
+
+instance Eachable JobName where
+  each = Clerk
+  each = Actor
+  each = Teacher
+  each = Guard
+  each = Chef
+  each = Boxer
+  each = Police
+  each = Nurse
