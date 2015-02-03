@@ -18,12 +18,12 @@
 % \date{\today} 
 
 \usetheme{Pittsburgh}
-
+\setbeamertemplate{navigation symbols}{}
 \begin{document}
 
 
 \note{
-Ich moechte heute die Ergebnisse einer keinen
+Ich moechte heute die Ergebnisse einer kleinen
 ``Fallstudie'', die ich im kleinen Rahmen durchgef\"uhrt habe,
 vorstellen -- wobei Ergebnisse vermutlich nicht der richtige Begriff
 ist. %
@@ -32,7 +32,7 @@ laut auszusprechen und meine Gedanke mit euch diskutieren. %
 Letztendlich kommen hier ja doch sehr unterschiedliche Charaktere
 bzgl. der Herangehensweise von Problemen zusammen.
 
-Kurz zum Titel: da es sich hier um eine Anspielung einer Spiel-Show
+Kurz zum Titel: da es sich hier um eine Anspielung auf eine Spiel-Show
 aus den 90ern handelt, ist der Titel leider etwas unpr\"azise. %
 Ich habe n\"amlich nur zehn Leute gefragt. %
 }
@@ -142,7 +142,7 @@ oddNumber | x `mod` 2 /= 0 = x
 
 \setbeamercovered{invisible}
 
-\begin{frame}{Erwartung}
+\begin{frame}{Erwartungen an die L\"osungen}
 
 \begin{itemize}
 \item<2> Modellierung der Einheiten \emph{Person} und \emph{Job}
@@ -150,17 +150,20 @@ oddNumber | x `mod` 2 /= 0 = x
 \item<2> Definition von Pr\"adikaten
 \item<2> \emph{Generate \& Test}
 \end{itemize}
-
 \end{frame}
 
-\begin{frame}
+\begin{frame}{Ein paar Statistiken}{Bildungsgrad}
+
+\centering
+\Huge \color{darkblue} Auswertung der Code-Einreichungen
+\end{frame}
+
+\begin{frame}{Ein paar Statistiken}{Bildungsgrad}
 \begin{tikzpicture}
 \begin{axis}[
     ybar,
     ymin=0, ymax=2,
     enlarge y limits={0.15,upper},
-    legend style={at={(0.5,-0.15)},
-      anchor=north,legend columns=-1},
     ylabel={\# Teilnehmer},
     symbolic x coords={M.Sc.,Dipl.,Dr. rer. nat.,Prof.},
     xtick=data,
@@ -168,26 +171,79 @@ oddNumber | x `mod` 2 /= 0 = x
     nodes near coords align={vertical},
     ]
 \addplot [draw=none,fill=darkblue] coordinates {(M.Sc.,1) (Dipl.,2) (Dr. rer. nat.,1) (Prof.,1)};
-\legend{Ausbildungsgrad}
-\end{axis}
-\end{tikzpicture}
-\end{frame}
-\begin{frame}
-\begin{tikzpicture}
-\begin{axis}[
-    ybar,
-    ymin=0, ymax=17,
-    enlarge y limits={0.15,upper},
-    ylabel={\# definierte Funktionen},
-    symbolic x coords={Bermie, JR, Michael, Nikita, Peer},
-    xtick=data,
-    nodes near coords,
-    nodes near coords align={vertical},
-    ]
-\addplot [draw=none,fill=darkblue] coordinates {(Bermie,9) (JR,5)
-  (Michael,6) (Nikita, 16) (Peer, 4)};
 \end{axis}
 \end{tikzpicture}
 \end{frame}
 
+\begin{frame}{Ein paar Statistiken}{Code-Komplexit\"at}
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    ymin=0, ymax=15,
+    enlarge y limits={0.15,upper},
+    ylabel={Komplexit\"at},
+    symbolic x coords={Bermie, JR, Michael, Nikita, Peer},
+    xtick=data,
+    nodes near coords,
+    nodes near coords align={vertical},
+    legend pos=north west
+    ]
+\addplot [draw=none,fill=darkblue] coordinates {(Bermie,9) (JR,5)
+  (Michael,6) (Nikita, 16) (Peer, 4)};
+\addplot [draw=none,fill=darkred] coordinates {(Bermie,5) (JR,1)
+  (Michael,1) (Nikita, 11) (Peer, 2)};
+\legend{Funktionen, Datenstrukturen}
+\end{axis}
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}
+\centering
+\Huge \color{darkblue} Code-Pr\"asentation
+\end{frame}
+
+\begin{frame}{Auswertung}
+\begin{itemize}
+\item Sortierung von Listen: Mengen als Datenstruktur besser geeignet
+\item Verschiedenheitstest: Kennzeichnung einzigartiger Einheiten
+\item All- und Existenzaussagen: Funktionen herausabstrahieren
+\item Eigenschaftstests: Kombinatoren herausabstrahieren
+\end{itemize}
+\pause
+Selbst ernannte Grundvoraussetzungen:
+\begin{itemize}
+\item hohe Wiederverwendbarkeit
+\item gewisses Ma\ss{} an Nat\"urlichsprachlichkeit
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Auswertung}{Recherche}
+\begin{tabular}{ll}
+\hline
+\hline
+\large \textbf{Pattern} & \large\textbf{Example}\\
+\hline
+\emph{PNoun} is a \emph{CNoun}. & Roberta is a person.\\
+\emph{PNoun} is \emph{Adjactive}.& Roberta is female.\\
+A \emph{CNoun} is \emph{Adjactive}. & A person is female.\\
+\emph{CardRest} \emph{CNoun} \emph{Verb} a \emph{CNoun}.
+ & Every person holds a job. \\
+\hline
+\hline
+\end{tabular}
+\vfill
+\footnotesize Rolf Schwitter; The jobs puzzle: Taking on the challenge via controlled natural language processing.
+\end{frame}
+
+\begin{frame}[fragile]{Auswertung}{Erste Entw\"urfe}
+\begin{lstlisting}
+data Gender = Male | Female
+data Job = Boxer | Chef | Guard | ...
+data Person = Person { gender :: Gender, job :: Job }
+
+prop1  = (roberta `hasNot` job) Boxer
+prop2a = (roberta `has` gender) Female
+prop2b = roberta `is` female
+\end{lstlisting}
+\end{frame}
 \end{document}
