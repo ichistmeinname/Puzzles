@@ -13,11 +13,12 @@ import SetFunctions (foldValues, isEmpty, mapValues, set0, set3, Values)
 data Team = Frankfurt | Gladbach | Dortmund | Paderborn | Leverkusen | Hannover
        | Hoffenheim | Muenchen | Hertha | Koeln | Freiburg | Mainz | Augsburg
        | Stuttgart | Bremen | Hamburg | Wolfsburg | Schalke
-  deriving Eq
+  deriving (Eq,Show)
 
 data Match = Match Team Team Result
+  deriving (Eq,Show)
 data Result = HomeDefeat | Draw | HomeVictory
-  deriving (Bounded,Enum)
+  deriving (Bounded,Enum,Eq,Show)
 
 possibleResults :: [Result]
 possibleResults = [minBound .. maxBound]
@@ -53,8 +54,9 @@ update key f ((k,v):kvMap)
   | otherwise = (k,v) : update key f kvMap
 
 recalculateTable :: Match -> Table -> Table
-recalculateTable _ []    = []
-recalculateTable m table = updateInc team2 res2 $ updateInc team1 res1 table
+recalculateTable m table = case table of
+  [] -> []
+  _  -> updateInc team2 res2 $ updateInc team1 res1 table
  where
   ((team1,res1),(team2,res2)) = matchPoints m
   updateInc k v = update k (+ v)
@@ -64,6 +66,11 @@ match t1 t2 = Match t1 t2 _
 
 playMatchDay :: Matchday -> [Match]
 playMatchDay = map (uncurry match)
+
+day31 = [ (Schalke,Stuttgart), (Wolfsburg,Hannover),
+          (Freiburg,Paderborn),(Mainz,Hamburg)]
+table30 = [(Hannover, 29),
+           (Hamburg,28), (Paderborn, 28),(Stuttgart, 27)]
 
 matchDay31 :: Matchday
 matchDay31 =  [ (Schalke,Stuttgart), (Wolfsburg,Hannover), (Augsburg,Koeln)
@@ -94,7 +101,7 @@ currentTable =
   [(Muenchen, 76), (Wolfsburg, 61), (Gladbach, 57), (Leverkusen, 55)
   ,(Schalke, 42), (Augsburg, 42), (Hoffenheim, 40), (Dortmund,39)
   ,(Bremen, 39), (Mainz, 37),(Frankfurt, 36), (Koeln, 35), (Hertha, 34)
-  ,(Freiburg, 36), (Hannover, 29), (Hamburg,28), (Paderborn, 28)
+  ,(Freiburg, 40), (Hannover, 29), (Hamburg,28), (Paderborn, 28)
   ,(Stuttgart, 27)]
 
 true :: a -> Bool
@@ -102,7 +109,7 @@ true _ = True
 
 type Question a = Team -> [Matchday] -> Table -> a
 
-relegation :: Team -> [Matchday] -> Table -> (Table,[Matchday])
+relegation :: Team -> [Matchday] -> Table -> (Table,[Match])
 relegation team mds curTable =
   relegation' team matchDays table
  where
@@ -110,6 +117,7 @@ relegation team mds curTable =
   table     = filterTable curTable team mds
   teams     = map fst table
 
+test i = relegation Hamburg (take i upcomingMatchdays) currentTable
 -- inRangeOf :: Table -> Match -> Table
 -- inRangeOf table team = any (`elem` map fst (filterTable table team))
 
@@ -127,16 +135,22 @@ filterMatchdays teams matchDays =
 relegation' :: Team
             -> [Matchday]
             -> Table
-            -> (Table,[Matchday])
+            -> (Table,[Match])
 relegation' team matchDays tableExcerpt =
-  (newTable,matchDays)
-    |> not (null (thereExist 2 (newTable \\ [teamEntry])
-        `suchThat` all (`weakerThan` teamEntry)))
+  (newTable,results)
+    |> not (null (thereExist 2 (newTable `without` team)
+        `suchThat` all (const True))) --(`weakerThan` teamEntry)))
  where
   teamEntry = (team, currentPoints team newTable)
   newTable = foldr recalculateTable
                    tableExcerpt
-                   (concatMap playMatchDay matchDays)
+                   results
+  results  = concatMap playMatchDay matchDays
+
+without :: Table -> Team -> Table
+without []         _ = []
+without (e@(t,_):ts) team | t == team = ts
+                        | otherwise = e : without ts team
 
 maxPoints :: [Matchday] -> Int
 maxPoints mds = fst (points (maxBound :: Result)) * length mds
@@ -147,7 +161,7 @@ currentPoints = lookup_
 isPossible :: Question Table -> Team -> [Matchday] -> Table -> Bool
 isPossible q team mds table = not (isEmpty (set3 q team mds table))
 
-percentageForQuestion :: Question (Table,[Matchday])
+percentageForQuestion :: Question (Table,[Match])
                       -> Team
                       -> [Matchday]
                       -> Table
@@ -169,10 +183,6 @@ countOutcomes matchCount = length possibleResults `pow` matchCount
 
 thereExist :: Eq a => Int -> [a] -> [a]
 thereExist = nOf_ -- nOf n xs `suchThat` allDifferent
-
-nOf :: Int -> [a] -> [a]
-nOf n ys | n == 0    = []
-         | otherwise = oneOf ys : nOf (n-1) ys
 
 nOf_ :: Int -> [a] -> [a]
 nOf_ 0 [] = []
