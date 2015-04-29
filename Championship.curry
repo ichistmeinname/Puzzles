@@ -8,7 +8,7 @@ import Float ((/.))
 import List ((\\))
 import Maybe (fromJust)
 
-import SetFunctions (foldValues, isEmpty, mapValues, set0, set3, Values)
+import SetFunctions (foldValues, isEmpty, mapValues, set0, set2, set3, Values)
 
 data Team = Frankfurt | Gladbach | Dortmund | Paderborn | Leverkusen | Hannover
        | Hoffenheim | Muenchen | Hertha | Koeln | Freiburg | Mainz | Augsburg
@@ -69,7 +69,7 @@ playMatchDay = map (uncurry match)
 
 day31 = [ (Schalke,Stuttgart), (Wolfsburg,Hannover),
           (Freiburg,Paderborn),(Mainz,Hamburg)]
-table30 = [(Hannover, 29),
+table30 = [(Freiburg,30),(Hannover, 29),
            (Hamburg,28), (Paderborn, 28),(Stuttgart, 27)]
 
 matchDay31 :: Matchday
@@ -101,7 +101,7 @@ currentTable =
   [(Muenchen, 76), (Wolfsburg, 61), (Gladbach, 57), (Leverkusen, 55)
   ,(Schalke, 42), (Augsburg, 42), (Hoffenheim, 40), (Dortmund,39)
   ,(Bremen, 39), (Mainz, 37),(Frankfurt, 36), (Koeln, 35), (Hertha, 34)
-  ,(Freiburg, 40), (Hannover, 29), (Hamburg,28), (Paderborn, 28)
+  ,(Freiburg, 30), (Hannover, 29), (Hamburg,28), (Paderborn, 28)
   ,(Stuttgart, 27)]
 
 true :: a -> Bool
@@ -114,17 +114,21 @@ relegation team mds curTable =
   relegation' team matchDays table
  where
   matchDays = filterMatchdays teams mds
-  table     = filterTable curTable team mds
+  table     = filter ((< pointsBound) . snd) curTable
   teams     = map fst table
+  pointsBound = currentPoints team curTable + maxPoints mds
 
-test i = relegation Hamburg (take i upcomingMatchdays) currentTable
--- inRangeOf :: Table -> Match -> Table
--- inRangeOf table team = any (`elem` map fst (filterTable table team))
-
-filterTable :: Table -> Team -> [Matchday] -> Table
-filterTable table team mds = filter ((< pointsBound) . snd) table
+-- champion :: Team -> [Matchday] -> Table -> (Table,[Match])
+champion team mds curTable =
+  -- matchDays
+  champion' team matchDays table
  where
-  pointsBound = currentPoints team table + maxPoints mds
+  matchDays = filterMatchdays teams mds
+  table     = filter ((> pointsBound) . snd) curTable
+  teams     = map fst table
+  pointsBound = currentPoints team curTable - maxPoints mds
+
+test i = percentageForQuestion relegation Hamburg (take i upcomingMatchdays) currentTable
 
 filterMatchdays :: [Team] -> [Matchday] -> [Matchday]
 filterMatchdays teams matchDays =
@@ -138,8 +142,20 @@ relegation' :: Team
             -> (Table,[Match])
 relegation' team matchDays tableExcerpt =
   (newTable,results)
-    |> not (null (thereExist 2 (newTable `without` team)
-        `suchThat` all (const True))) --(`weakerThan` teamEntry)))
+    |> not (isEmpty (thereExistSet 2 (newTable `without` team)
+        -- `suchThatSet` all (`weakerThan` teamEntry)))
+       `suchThat` anySet (all (`weakerThan` teamEntry))))
+ where
+  teamEntry = (team, currentPoints team newTable)
+  newTable = foldr recalculateTable
+                   tableExcerpt
+                   results
+  results  = concatMap playMatchDay matchDays
+
+champion' team matchDays tableExcerpt =
+  (newTable,results)
+    |> not (isEmpty (set0 (newTable `without` team
+       `suchThat` all (`weakerThan` teamEntry))))
  where
   teamEntry = (team, currentPoints team newTable)
   newTable = foldr recalculateTable
@@ -158,7 +174,7 @@ maxPoints mds = fst (points (maxBound :: Result)) * length mds
 currentPoints :: Team -> Table -> Int
 currentPoints = lookup_
 
-isPossible :: Question Table -> Team -> [Matchday] -> Table -> Bool
+isPossible :: Question a -> Team -> [Matchday] -> Table -> Bool
 isPossible q team mds table = not (isEmpty (set3 q team mds table))
 
 percentageForQuestion :: Question (Table,[Match])
@@ -172,8 +188,9 @@ percentageForQuestion q team mds curTable =
   pos1    = countValues (set3 q team matches table)
   pos2    = countOutcomes (length (concat matches))
   matches = filterMatchdays teams mds
-  table   = filterTable curTable team mds
-  teams   = map fst table
+  table     = filter ((< pointsBound) . snd) curTable
+  teams     = map fst table
+  pointsBound = currentPoints team curTable + maxPoints mds
 
 countValues :: Values a -> Int
 countValues = foldValues (\_ n -> n + 1) 0 . mapValues (\_ -> 1)
@@ -181,8 +198,20 @@ countValues = foldValues (\_ n -> n + 1) 0 . mapValues (\_ -> 1)
 countOutcomes :: Int -> Int
 countOutcomes matchCount = length possibleResults `pow` matchCount
 
+allSet :: (a -> Bool) -> Values a -> Bool
+allSet p = foldValues (&&) True . mapValues p
+
+anySet :: (a -> Bool) -> Values a -> Bool
+anySet p = foldValues (||) False . mapValues p
+
+suchThatSet :: Values a -> (a -> Bool) -> Values a
+suchThatSet vs p | foldValues (||) False (mapValues p vs) = vs
+
 thereExist :: Eq a => Int -> [a] -> [a]
-thereExist = nOf_ -- nOf n xs `suchThat` allDifferent
+thereExist = nOf_
+
+thereExistSet :: Eq a => Int -> [a] -> Values [a]
+thereExistSet n xs = set2 nOf_ n xs -- nOf n xs `suchThat` allDifferent
 
 nOf_ :: Int -> [a] -> [a]
 nOf_ 0 [] = []
