@@ -1,3 +1,5 @@
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 {-
 Jobs Puzzle
 
@@ -17,9 +19,10 @@ Question: Who holds which jobs?
 -}
 
 data People = Roberta | Thelma | Steve | Pete
+  deriving Eq
 
-data Jobs = Chef | Guard | Nurse | Clerk
-          | PoliceOfficer | Teacher | Actor | Boxer
+-- data Jobs = Chef | Guard | Nurse | Clerk
+--           | PoliceOfficer | Teacher | Actor | Boxer
 
 main |
     all isPerson jobs             -- Each job belongs to a person

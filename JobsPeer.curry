@@ -1,3 +1,5 @@
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
+
 -- Jobs Puzzle
 --
 -- There are four people: Roberta, Thelma, Steve, and Pete.
@@ -18,9 +20,10 @@
 
 data Job    = Chef    | Guard   | Nurse | Clerk
             | Officer | Teacher | Actor | Boxer
+  deriving (Eq,Ord)
 data Person = Roberta | Thelma  | Steve | Pete
 
-allDifferent :: [a] -> Bool
+allDifferent :: Eq a => [a] -> Bool
 allDifferent []     = True
 allDifferent (x:xs) = x `notElem` xs && allDifferent xs
 

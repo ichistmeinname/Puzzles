@@ -1,4 +1,4 @@
-module Cuzzle (jobsPuzzle) where
+{-# OPTIONS_CYMAKE -X TypeClassExtensions #-}
 
 data Job = Actor
          | Boxer
@@ -8,6 +8,7 @@ data Job = Actor
          | Guard
          | PoliceOfficer
          | Teacher
+  deriving (Eq,Ord)
 
 perm :: [a] -> [a]
 perm []     = []
@@ -17,7 +18,7 @@ insert :: a -> [a] -> [a]
 insert x xs = x:xs
 insert x (y:ys) = y : insert x ys
 
-isSorted :: [a] -> Bool
+isSorted :: Ord a => [a] -> Bool
 isSorted []       = True
 isSorted [_]      = True
 isSorted (x:y:ys) = x < y && isSorted (y:ys)
@@ -62,4 +63,3 @@ jobsPuzzle =
 -- [[Guard,Teacher],[Boxer,Chef],[Nurse,PoliceOfficer],[Actor,Clerk]]
 -- More values? [Y(es)/n(o)/a(ll)] a
 -- No more solutions.
-

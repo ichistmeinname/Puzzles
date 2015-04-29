@@ -23,12 +23,13 @@
 
 
 \note{
-Ich moechte heute die Ergebnisse einer kleinen
+Ich moechte heute die Ergebnisse einer
 ``Fallstudie'', die ich im kleinen Rahmen durchgef\"uhrt habe,
 vorstellen -- wobei Ergebnisse vermutlich nicht der richtige Begriff
 ist. %
-Vielmehr moechte ich die Gelegenheit nutzen, meine Gedanken einmal
-laut auszusprechen und meine Gedanke mit euch diskutieren. %
+Vielmehr moechte ich die Gelegenheit nutzen, die Einreichungen kurz
+vorzustellen und meine Gedanken dazu einmal
+laut auszusprechen und meine Gedanke mit euch zu diskutieren. %
 Letztendlich kommen hier ja doch sehr unterschiedliche Charaktere
 bzgl. der Herangehensweise von Problemen zusammen.
 
@@ -152,8 +153,11 @@ oddNumber | x `mod` 2 /= 0 = x
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Ein paar Statistiken}{Bildungsgrad}
 
+%%%%%%
+%  Auswertung
+%%%%%%
+\begin{frame}
 \centering
 \Huge \color{darkblue} Auswertung der Code-Einreichungen
 \end{frame}
@@ -217,7 +221,19 @@ Selbst ernannte Grundvoraussetzungen:
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Auswertung}{Recherche}
+\begin{frame}{Nat\"urlichsprachlichkeit}{Recherche}
+
+Stuart C. Shapiro; \emph{The jobs puzzle: A challenge for logical expressibility and automated
+reasoning}
+\vfill
+Rolf Schwitter; \emph{The jobs puzzle: Taking on the challenge via controlled natural language processing}
+\vfill
+David Schneider, Michael Leuscher; \emph{Towards B as a
+High-Level Constraint Modelling Language Solving The Jobs Puzzle
+Challenge}
+\end{frame}
+
+\begin{frame}{Nat\"urlichsprachlichkeit}{Controlled NLP}
 \begin{tabular}{ll}
 \hline
 \hline
@@ -232,10 +248,10 @@ A \emph{CNoun} is \emph{Adjactive}. & A person is female.\\
 \hline
 \end{tabular}
 \vfill
-\footnotesize Rolf Schwitter; The jobs puzzle: Taking on the challenge via controlled natural language processing.
+\footnotesize Rolf Schwitter; \emph{The jobs puzzle: Taking on the challenge via controlled natural language processing}
 \end{frame}
 
-\begin{frame}[fragile]{Auswertung}{Erste Entw\"urfe}
+\begin{frame}[fragile]{Nat\"urlichsprachlichkeit}{Erste Entw\"urfe}
 \begin{lstlisting}
 data Gender = Male | Female
 data Job = Boxer | Chef | Guard | ...
@@ -245,5 +261,20 @@ prop1  = (roberta `hasNot` job) Boxer
 prop2a = (roberta `has` gender) Female
 prop2b = roberta `is` female
 \end{lstlisting}
+
+\pause
+
+\begin{lstlisting}
+has, hasNot :: Eq b => a -> (a -> b) -> b -> Bool
+is :: Eq a => a -> (a -> Bool) -> Bool
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{R\"atsell\"osen in Curry: Kernaspekte}
+\begin{itemize}
+\item Modellierungsschema
+\item sinnvolle Verwendung des Nichtdeterminismus
+\item Nat\"urlichsprachlichkeit
+\end{itemize}
 \end{frame}
 \end{document}

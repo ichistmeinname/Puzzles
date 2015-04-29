@@ -2,8 +2,10 @@
 
 module Puzzle where
 
+import Combinators
+
 import List (intercalate,isInfixOf)
-import SetFunctions
+import SetFunctions (set0,values2list)
 
 data Person = Person Name Gender [Job]
   deriving (Eq,Ord)
@@ -60,53 +62,21 @@ instance HasGender Person where
 instance HasGender Job where
   gender (Job _ g) = g
 
-allDifferent :: Eq a => [a] -> Bool
-allDifferent = allDifferentF id
-
-allDifferentF :: Eq b => (a -> b) -> [a] -> Bool
-allDifferentF f []     = True
-allDifferentF f (x:xs) = all ((/= f x) . f) xs && allDifferentF f xs 
-
--- -- inverse
--- (~.) :: Eq b => (a -> b) -> b -> a
--- f ~. y | f x == y = x
---  where x free
-
--- (~.~) :: a -> b -> (a,b)
--- x ~.~ y = (x,y)
-
-
-has :: Ord b => a -> (a -> b) -> b -> Bool
-has val f valB = sortValues (set0 valB) `isInfixOf` sortValues (set1 f val)
-
-hasNot :: Ord b => a -> (a -> b) -> b -> Bool
-hasNot val f = not . has val f
-
-with :: (a -> Bool) -> [a] -> Bool
-with f xs = all f xs
-
-infixl 1 |>
-
-different = (/=)
-
-
-have :: (Eq a, Ord b) => [a] -> (b -> b -> Bool) -> (a -> b) -> Bool
-have xs pred sel = and (sortValues (set1 have' xs))
- where
-  have' ys | x /= y = pred (sel x) (sel y)
-   where
-    x = oneOf ys
-    y = oneOf ys
-
 twoJobs :: [Person]
-twoJobs = persons |> (persons `have` different) job --allDifferentF jobName (concatMap jobs persons)
+twoJobs = persons |> -- (persons `have` different) job
+                     allDifferentF jobName (concatMap jobs persons)
                   |> (roberta `hasNot` job) Boxer
                   |> (pete `hasNot` job) `with` higherEducation
-                  |> allDifferent [roberta, oneOf persons `suchThat` (`hasJob` Chef), oneOf persons `suchThat` (`hasJob` Police)]
+                  -- |> allDifferent [ roberta
+                  --    , oneOf persons `suchThat` (`hasJob` Chef)
+                  --    , oneOf persons `suchThat` (`hasJob` Police)]
+                  |> ([ roberta
+                     , oneOf persons `suchThat` (`hasJob` Chef)
+                     , oneOf persons `suchThat` (`hasJob` Police)] `have_` different) id
                   |> p2 == husband (p1 `suchThat` (`hasJob` Chef))
                   |> (p2 `has` job) Clerk
-                  |> ((oneOf persons `suchThat` (`hasJob` Nurse)) `has`) gender Male
-                  |> ((oneOf persons `suchThat` (flip ((flip has) job)) Actor) `has`) gender Male
+                  |> ((oneOf persons `suchThat` ((`has` job) `asA` Nurse)) `has`) gender Male
+                  |> ((oneOf persons `suchThat` ((`has` job) `asAn` Actor)) `has`) gender Male
  where
   p1 = oneOf persons
   persons = [pete,roberta,steve,thelma]
@@ -121,28 +91,16 @@ husband :: Person -> Person
 husband (Person _ Female _) | gender p_ == Male = p_
  where p_ free
 
-persons' = [pete',roberta',steve',thelma']
-pete' = person Pete Male _ _
-roberta' = person Roberta Female _ _
-steve' = person Steve Male _ _
-thelma' = person Thelma Female _ _
-
 -- solution :: IO ()
--- solution = values2list (set0 twoJobs) >>= putStr . unlines . map show
+solution = values2list (set0 twoJobs) >>= putStr . intercalate "\n" . map (unlines . map show)
 
-elemOf :: JobName -> [Job] -> Bool
-elemOf name1 (Job name2 _ : js) = name1 == name2 || name1 `elemOf` js
+-- persons' = [pete',roberta',steve',thelma']
+-- pete' = person Pete Male _ _
+-- roberta' = person Roberta Female _ _
+-- steve' = person Steve Male _ _
+-- thelma' = person Thelma Female _ _
 
-oneOf :: [a] -> a
-oneOf (x:_) = x
-oneOf (_:xs) = oneOf xs
 
-suchThat :: a -> (a -> Bool) -> a
-suchThat x p | p x = x
-
-(|>) :: a -> Bool -> a
-x |> b | b = x
-  
 -- |> roberta) jobName (isNot Boxer)
 --             |> pete) jobName (\x -> all (isNot x) [Teacher,Nurse,Police])
 --          |> _) jobName (\x ->
@@ -224,3 +182,11 @@ x |> b | b = x
 --   -- each = Boxer
 --   -- each = Police
 --   -- each = Nurse
+
+-- -- inverse
+-- (~.) :: Eq b => (a -> b) -> b -> a
+-- f ~. y | f x == y = x
+--  where x free
+
+-- (~.~) :: a -> b -> (a,b)
+-- x ~.~ y = (x,y)
