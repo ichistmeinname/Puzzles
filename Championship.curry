@@ -17,7 +17,7 @@ data Team = Frankfurt | Gladbach | Dortmund | Paderborn | Leverkusen | Hannover
 
 data Match = Match Team Team Result
   deriving (Eq,Show)
-data Result = HomeDefeat | Draw | HomeVictory
+data Result = AwayVictory | Draw | HomeVictory
   deriving (Bounded,Enum,Eq,Show)
 
 possibleResults :: [Result]
@@ -31,7 +31,7 @@ weakerThan (_,n) (_,m) = n < m
 points :: Result -> (Int,Int)
 points HomeVictory = (3,0)
 points Draw        = (1,1)
-points HomeDefeat  = (0,3)
+points AwayVictory = (0,3)
 
 matchPoints :: Match -> ((Team, Int),(Team, Int))
 matchPoints (Match t1 t2 res) = ((t1,res1),(t2,res2))
