@@ -12,7 +12,7 @@ import SetFunctions (foldValues, isEmpty, mapValues, set0, set2, set3, Values)
 
 data Team = Frankfurt | Gladbach | Dortmund | Paderborn | Leverkusen | Hannover
        | Hoffenheim | Muenchen | Hertha | Koeln | Freiburg | Mainz | Augsburg
-       | Stuttgart | Bremen | Hamburg | Wolfsburg | Schalke
+       | Stuttgart | Bremen | HamburgerSV | Wolfsburg | Schalke
   deriving (Eq,Show)
 
 data Match = Match Team Team Result
@@ -53,13 +53,14 @@ update key f ((k,v):kvMap)
   | k == key  = (k,f v) :kvMap
   | otherwise = (k,v) : update key f kvMap
 
+addPoints :: Team -> Int -> Table -> Table
+addPoints k v = update k (+ v)
+
 recalculateTable :: Match -> Table -> Table
-recalculateTable m table = case table of
-  [] -> []
-  _  -> updateInc team2 res2 $ updateInc team1 res1 table
+recalculateTable (Match team1 team2 result) table =
+  addPoints team1 res1 (addPoints team2 res2 table)
  where
-  ((team1,res1),(team2,res2)) = matchPoints m
-  updateInc k v = update k (+ v)
+  (res1,res2) = points result
 
 updateTable :: [Matchday] -> Table -> (Table,[Match])
 updateTable mds table = (foldr recalculateTable table matches,matches)
@@ -73,29 +74,29 @@ playMatchDay :: Matchday -> [Match]
 playMatchDay = map (uncurry match)
 
 day31 = [ (Schalke,Stuttgart), (Wolfsburg,Hannover),
-          (Freiburg,Paderborn),(Mainz,Hamburg)]
+          (Freiburg,Paderborn),(Mainz,HamburgerSV)]
 table30 = [(Freiburg,30),(Hannover, 29),
-           (Hamburg,28), (Paderborn, 28),(Stuttgart, 27)]
+           (HamburgerSV,28), (Paderborn, 28),(Stuttgart, 27)]
 
 matchDay31 :: Matchday
 matchDay31 =  [ (Schalke,Stuttgart), (Wolfsburg,Hannover), (Augsburg,Koeln)
               , (Hoffenheim,Dortmund), (Bremen,Frankfurt), (Freiburg,Paderborn)
-              , (Leverkusen,Muenchen), (Mainz,Hamburg), (Hertha,Gladbach) ]
+              , (Leverkusen,Muenchen), (Mainz,HamburgerSV), (Hertha,Gladbach) ]
 
 matchDay32 :: Matchday
-matchDay32 = [ (Hamburg,Freiburg), (Muenchen,Augsburg), (Dortmund,Hertha)
+matchDay32 = [ (HamburgerSV,Freiburg), (Muenchen,Augsburg), (Dortmund,Hertha)
              , (Gladbach,Leverkusen), (Hannover,Bremen), (Frankfurt,Hoffenheim)
              , (Stuttgart,Mainz), (Paderborn,Wolfsburg), (Koeln,Schalke) ]
 
 matchDay33 :: Matchday
-matchDay33 = [ (Schalke,Paderborn), (Leverkusen,Hoffenheim), (Stuttgart,Hamburg)
+matchDay33 = [ (Schalke,Paderborn), (Leverkusen,Hoffenheim), (Stuttgart,HamburgerSV)
              , (Wolfsburg,Dortmund), (Mainz,Koeln), (Augsburg,Hannover)
              , (Hertha,Frankfurt), (Bremen,Gladbach), (Freiburg,Muenchen) ]
 
 matchDay34 :: Matchday
 matchDay34 = [ (Muenchen,Mainz), (Dortmund,Bremen), (Gladbach,Augsburg)
              , (Hoffenheim,Hertha), (Hannover,Freiburg), (Frankfurt,Leverkusen)
-             , (Hamburg,Schalke), (Koeln,Wolfsburg), (Paderborn,Stuttgart) ]
+             , (HamburgerSV,Schalke), (Koeln,Wolfsburg), (Paderborn,Stuttgart) ]
 
 upcomingMatchdays :: [Matchday]
 upcomingMatchdays =
@@ -106,7 +107,7 @@ currentTable =
   [(Muenchen, 76), (Wolfsburg, 61), (Gladbach, 57), (Leverkusen, 55)
   ,(Schalke, 42), (Augsburg, 42), (Hoffenheim, 40), (Dortmund,39)
   ,(Bremen, 39), (Mainz, 37),(Frankfurt, 36), (Koeln, 35), (Hertha, 34)
-  ,(Freiburg, 30), (Hannover, 29), (Hamburg,28), (Paderborn, 28)
+  ,(Freiburg, 30), (Hannover, 29), (HamburgerSV,28), (Paderborn, 28)
   ,(Stuttgart, 27)]
 
 type Question a = Team -> [Matchday] -> Table -> a
@@ -135,7 +136,7 @@ champion team mds curTable =
   teams     = map fst table
   pointsBound = currentPoints team curTable - maxPoints mds
 
-test i = percentageForQuestion relegation Hamburg (take i upcomingMatchdays) currentTable
+test i = percentageForQuestion relegation HamburgerSV (take i upcomingMatchdays) currentTable
 
 filterMatchdays :: [Team] -> [Matchday] -> [Matchday]
 filterMatchdays teams matchDays =
@@ -210,8 +211,8 @@ anySet p = foldValues (||) False . mapValues p
 suchThatSet :: Values a -> (a -> Bool) -> Values a
 suchThatSet vs p | foldValues (||) False (mapValues p vs) = vs
 
--- thereExist :: Eq a => Int -> [a] -> [a]
--- thereExist = nOf_
+thereExist :: Eq a => Int -> [a] -> [a]
+thereExist = nOf_
 
 thereExistN :: Eq a => Int -> [a] -> Values [a]
 thereExistN n xs = set2 nOf_ n xs -- nOf n xs `suchThat` allDifferent
