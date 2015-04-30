@@ -61,6 +61,11 @@ recalculateTable m table = case table of
   ((team1,res1),(team2,res2)) = matchPoints m
   updateInc k v = update k (+ v)
 
+updateTable :: [Matchday] -> Table -> (Table,[Match])
+updateTable mds table = (foldr recalculateTable table matches,matches)
+ where
+  matches = concatMap playMatchDay mds
+
 match :: Team -> Team -> Match
 match t1 t2 = Match t1 t2 _
 
@@ -104,24 +109,26 @@ currentTable =
   ,(Freiburg, 30), (Hannover, 29), (Hamburg,28), (Paderborn, 28)
   ,(Stuttgart, 27)]
 
-true :: a -> Bool
-true _ = True
-
 type Question a = Team -> [Matchday] -> Table -> a
 
-relegation :: Team -> [Matchday] -> Table -> (Table,[Match])
+relegation :: Team
+           -> [Matchday]
+           -> Table
+           -> ((Table,[Match]),([Matchday],Table))
 relegation team mds curTable =
-  relegation' team matchDays table
+  (relegation' team matchDays table, (matchDays,table))
  where
   matchDays = filterMatchdays teams mds
   table     = filter ((< pointsBound) . snd) curTable
   teams     = map fst table
   pointsBound = currentPoints team curTable + maxPoints mds
 
--- champion :: Team -> [Matchday] -> Table -> (Table,[Match])
+champion :: Team
+         -> [Matchday]
+         -> Table
+         -> ((Table,[Match]),([Matchday],Table))
 champion team mds curTable =
-  -- matchDays
-  champion' team matchDays table
+  (champion' team matchDays table,(matchDays,table))
  where
   matchDays = filterMatchdays teams mds
   table     = filter ((> pointsBound) . snd) curTable
@@ -141,32 +148,31 @@ relegation' :: Team
             -> Table
             -> (Table,[Match])
 relegation' team matchDays tableExcerpt =
-  (newTable,results)
-    |> not (isEmpty (thereExistSet 2 (newTable `without` team)
-        -- `suchThatSet` all (`weakerThan` teamEntry)))
+  r
+    |> not (isEmpty (thereExistN 2 (newTable `without` team)
        `suchThat` anySet (all (`weakerThan` teamEntry))))
+       -- `suchThatSet` all (`weakerThan` teamEntry)))
  where
   teamEntry = (team, currentPoints team newTable)
-  newTable = foldr recalculateTable
-                   tableExcerpt
-                   results
-  results  = concatMap playMatchDay matchDays
+  r@(newTable,results) = updateTable matchDays tableExcerpt
 
+champion' :: Team
+          -> [Matchday]
+          -> Table
+          -> (Table,[Match])
 champion' team matchDays tableExcerpt =
-  (newTable,results)
+  r
     |> not (isEmpty (set0 (newTable `without` team
        `suchThat` all (`weakerThan` teamEntry))))
  where
   teamEntry = (team, currentPoints team newTable)
-  newTable = foldr recalculateTable
-                   tableExcerpt
-                   results
-  results  = concatMap playMatchDay matchDays
+  r@(newTable,results) = updateTable matchDays tableExcerpt
 
 without :: Table -> Team -> Table
 without []         _ = []
-without (e@(t,_):ts) team | t == team = ts
-                        | otherwise = e : without ts team
+without (e@(t,_):ts) team
+  | t == team = ts
+  | otherwise = e : without ts team
 
 maxPoints :: [Matchday] -> Int
 maxPoints mds = fst (points (maxBound :: Result)) * length mds
@@ -177,7 +183,7 @@ currentPoints = lookup_
 isPossible :: Question a -> Team -> [Matchday] -> Table -> Bool
 isPossible q team mds table = not (isEmpty (set3 q team mds table))
 
-percentageForQuestion :: Question (Table,[Match])
+percentageForQuestion :: Question (a,([Matchday],Table))
                       -> Team
                       -> [Matchday]
                       -> Table
@@ -186,17 +192,14 @@ percentageForQuestion q team mds curTable =
   ((fromInteger pos1 / fromInteger pos2) * 100,pos1,pos2, matches)
  where
   pos1    = countValues (set3 q team matches table)
-  pos2    = countOutcomes (length (concat matches))
-  matches = filterMatchdays teams mds
-  table     = filter ((< pointsBound) . snd) curTable
-  teams     = map fst table
-  pointsBound = currentPoints team curTable + maxPoints mds
+  pos2    = countOutcomes matches
+  (matches,table) = snd (q team mds curTable)
 
 countValues :: Values a -> Int
 countValues = foldValues (\_ n -> n + 1) 0 . mapValues (\_ -> 1)
 
-countOutcomes :: Int -> Int
-countOutcomes matchCount = length possibleResults `pow` matchCount
+countOutcomes :: [Matchday] -> Int
+countOutcomes mds = length possibleResults `pow` length (concat mds)
 
 allSet :: (a -> Bool) -> Values a -> Bool
 allSet p = foldValues (&&) True . mapValues p
@@ -207,11 +210,11 @@ anySet p = foldValues (||) False . mapValues p
 suchThatSet :: Values a -> (a -> Bool) -> Values a
 suchThatSet vs p | foldValues (||) False (mapValues p vs) = vs
 
-thereExist :: Eq a => Int -> [a] -> [a]
-thereExist = nOf_
+-- thereExist :: Eq a => Int -> [a] -> [a]
+-- thereExist = nOf_
 
-thereExistSet :: Eq a => Int -> [a] -> Values [a]
-thereExistSet n xs = set2 nOf_ n xs -- nOf n xs `suchThat` allDifferent
+thereExistN :: Eq a => Int -> [a] -> Values [a]
+thereExistN n xs = set2 nOf_ n xs -- nOf n xs `suchThat` allDifferent
 
 nOf_ :: Int -> [a] -> [a]
 nOf_ 0 [] = []
