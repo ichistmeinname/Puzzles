@@ -1,4 +1,7 @@
 .curry/
+Curry_Main_Goal.curry
+.DS_Store
+*~
 *.aux
 *.bbl
 *.blg
