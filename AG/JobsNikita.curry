@@ -6,7 +6,7 @@ import Maybe     ( fromMaybe )
 
 import SetFunctions ( set0, values2list )
 
--- Data structure for relations over finite domains
+-- Data structure for relations over finite domains.
 
 data Rel a b = Rel (FM (a, b) Bool) [a] [b]
 
